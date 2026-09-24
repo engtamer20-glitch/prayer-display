@@ -1,12 +1,10 @@
-// قائمة الإحداثيات والمدن
-const cityPresets = {
+﻿const cityPresets = {
   cairo: { lat: 30.0444, lng: 31.2357, method: 'Egyptian' },
   makkah: { lat: 21.4225, lng: 39.8262, method: 'UmmAlQura' },
   kuwait: { lat: 29.3759, lng: 47.9774, method: 'Kuwait' },
   dubai: { lat: 25.2048, lng: 55.2708, method: 'Dubai' }
 };
 
-// قراءة الإعدادات المحفوظة محلياً في جهاز العرض
 let settings = JSON.parse(localStorage.getItem('prayer_settings')) || {
   mosqueName: "مسجد النور",
   cityKey: "cairo",
@@ -25,12 +23,11 @@ const prayerLabels = {
 };
 
 const azkarList = [
-  'سبحان الله وبحمده، سبحان الله العظيم',
+  'سبحان الله وبحمده سبحان الله العظيم',
   'لا حول ولا قوة إلا بالله العلي العظيم',
-  'اللهم صلِّ وسلم وبارك على نبينا محمد',
+  'اللهم صل وسلم وبارك على نبينا محمد',
   'استغفر الله العظيم وأتوب إليه',
   'لا إله إلا أنت سبحانك إني كنت من الظالمين',
-  'الصلاة خير من النوم',
   'الرجاء المحافظة على نظافة المسجد والهدوء'
 ];
 
@@ -39,7 +36,6 @@ let iqamahTimesToday = {};
 let currentZikrIndex = 0;
 let audioContext = null;
 
-// توليد تنبيه صوتي برمجي دون الحاجة لملفات mp3
 function playBeep(freq = 600, duration = 0.5) {
   if (!settings.audioEnabled) return;
   try {
@@ -55,17 +51,15 @@ function playBeep(freq = 600, duration = 0.5) {
     osc.start();
     osc.stop(audioContext.currentTime + duration);
   } catch (e) {
-    console.log("Audio waiting for user click interaction.");
+    console.log("Audio waiting for user click.");
   }
 }
 
 function initApp() {
   document.getElementById("mosque-title").textContent = settings.mosqueName;
-
   const currentPreset = cityPresets[settings.cityKey] || cityPresets.cairo;
   const coordinates = new adhan.Coordinates(currentPreset.lat, currentPreset.lng);
   const now = new Date();
-  
   let methodParams = adhan.CalculationMethod[currentPreset.method]();
   prayerTimesToday = new adhan.PrayerTimes(coordinates, now, methodParams);
 
@@ -198,7 +192,6 @@ function tick() {
       document.getElementById('countdown').textContent = 
         String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
 
-      // تنبيه صوتي عند دخول الدقيقة 0 والثانية 0
       if (hours === 0 && minutes === 0 && seconds === 1) {
         playBeep(880, 1.5);
       }
@@ -210,11 +203,10 @@ function tick() {
   }
 }
 
-// التحكم في وضع ملء الشاشة
 function toggleFullScreen() {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch(err => {
-      console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+      console.log(err.message);
     });
   } else {
     if (document.exitFullscreen) {
@@ -223,7 +215,6 @@ function toggleFullScreen() {
   }
 }
 
-// وظائف نافذة الإعدادات
 function openSettings() {
   document.getElementById('setting-mosque-name').value = settings.mosqueName;
   document.getElementById('setting-city').value = settings.cityKey;
@@ -257,7 +248,6 @@ function saveSettings() {
   initApp();
 }
 
-// بدء التشغيل
 initApp();
 tick();
 setInterval(tick, 1000);
