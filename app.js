@@ -252,3 +252,5 @@ initApp();
 tick();
 setInterval(tick, 1000);
 setInterval(updateTicker, 10000);
+
+if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js'); }); }
