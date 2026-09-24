@@ -1,4 +1,4 @@
-// البيانات والمدن الجاهزة
+// قائمة الإحداثيات والمدن
 const cityPresets = {
   cairo: { lat: 30.0444, lng: 31.2357, method: 'Egyptian' },
   makkah: { lat: 21.4225, lng: 39.8262, method: 'UmmAlQura' },
@@ -6,12 +6,13 @@ const cityPresets = {
   dubai: { lat: 25.2048, lng: 55.2708, method: 'Dubai' }
 };
 
-// تحميل الإعدادات من LocalStorage أو القيم الافتراضية
+// قراءة الإعدادات المحفوظة محلياً في جهاز العرض
 let settings = JSON.parse(localStorage.getItem('prayer_settings')) || {
   mosqueName: "مسجد النور",
   cityKey: "cairo",
   iqamahDelays: { fajr: 25, dhuhr: 20, asr: 20, maghrib: 10, isha: 20 },
-  prayerDurationMinutes: 15
+  prayerDurationMinutes: 15,
+  audioEnabled: true
 };
 
 const prayerLabels = {
@@ -26,15 +27,37 @@ const prayerLabels = {
 const azkarList = [
   'سبحان الله وبحمده، سبحان الله العظيم',
   'لا حول ولا قوة إلا بالله العلي العظيم',
-  'اللهم صل وسلم وبارك على نبينا محمد',
+  'اللهم صلِّ وسلم وبارك على نبينا محمد',
   'استغفر الله العظيم وأتوب إليه',
   'لا إله إلا أنت سبحانك إني كنت من الظالمين',
+  'الصلاة خير من النوم',
   'الرجاء المحافظة على نظافة المسجد والهدوء'
 ];
 
 let prayerTimesToday = null;
 let iqamahTimesToday = {};
 let currentZikrIndex = 0;
+let audioContext = null;
+
+// توليد تنبيه صوتي برمجي دون الحاجة لملفات mp3
+function playBeep(freq = 600, duration = 0.5) {
+  if (!settings.audioEnabled) return;
+  try {
+    if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    osc.start();
+    osc.stop(audioContext.currentTime + duration);
+  } catch (e) {
+    console.log("Audio waiting for user click interaction.");
+  }
+}
 
 function initApp() {
   document.getElementById("mosque-title").textContent = settings.mosqueName;
@@ -78,7 +101,7 @@ function updateDates(date) {
 
 function clearCardHighlights() {
   ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(p => {
-    const card = document.getElementById('card-' + p);
+    const card = document.getElementById(`card-${p}`);
     if (card) card.classList.remove('active-card');
   });
 }
@@ -152,11 +175,11 @@ function tick() {
 
     if (isWaitingForIqamah) {
       document.getElementById('status-badge').textContent = 'وقت الإقامة';
-      document.getElementById('status-badge').className = 'inline-block px-4 py-1 rounded-full text-sm font-semibold bg-amber-950 text-amber-300 border border-amber-800 mb-3 animate-pulse';
+      document.getElementById('status-badge').className = 'inline-block px-5 py-1.5 rounded-full text-sm font-bold bg-amber-950 text-amber-300 border border-amber-800 mb-3 animate-pulse';
       document.getElementById('status-label').textContent = 'متبقي على إقامة:';
     } else {
       document.getElementById('status-badge').textContent = 'الصلاة القادمة';
-      document.getElementById('status-badge').className = 'inline-block px-4 py-1 rounded-full text-sm font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800 mb-3';
+      document.getElementById('status-badge').className = 'inline-block px-5 py-1.5 rounded-full text-sm font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 mb-3';
       document.getElementById('status-label').textContent = 'متبقي على أذان:';
     }
 
@@ -174,6 +197,11 @@ function tick() {
 
       document.getElementById('countdown').textContent = 
         String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+
+      // تنبيه صوتي عند دخول الدقيقة 0 والثانية 0
+      if (hours === 0 && minutes === 0 && seconds === 1) {
+        playBeep(880, 1.5);
+      }
     }
   } else {
     document.getElementById('target-prayer-name').textContent = 'فجر الغد';
@@ -182,7 +210,20 @@ function tick() {
   }
 }
 
-// وظائف التحكم في لوحة الإعدادات
+// التحكم في وضع ملء الشاشة
+function toggleFullScreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(err => {
+      console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+    });
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  }
+}
+
+// وظائف نافذة الإعدادات
 function openSettings() {
   document.getElementById('setting-mosque-name').value = settings.mosqueName;
   document.getElementById('setting-city').value = settings.cityKey;
@@ -191,6 +232,7 @@ function openSettings() {
   document.getElementById('setting-iqamah-asr').value = settings.iqamahDelays.asr;
   document.getElementById('setting-iqamah-maghrib').value = settings.iqamahDelays.maghrib;
   document.getElementById('setting-iqamah-isha').value = settings.iqamahDelays.isha;
+  document.getElementById('setting-audio-enabled').checked = settings.audioEnabled;
   document.getElementById('settings-modal').classList.remove('hidden');
 }
 
@@ -201,6 +243,7 @@ function closeSettings() {
 function saveSettings() {
   settings.mosqueName = document.getElementById('setting-mosque-name').value || "مسجد";
   settings.cityKey = document.getElementById('setting-city').value;
+  settings.audioEnabled = document.getElementById('setting-audio-enabled').checked;
   settings.iqamahDelays = {
     fajr: parseInt(document.getElementById('setting-iqamah-fajr').value) || 20,
     dhuhr: parseInt(document.getElementById('setting-iqamah-dhuhr').value) || 15,
